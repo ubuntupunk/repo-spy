@@ -22,30 +22,50 @@ collect_repo() {
   # Beads issues
   local issues=$(bd list --json)
 
-  # GSD planning phases
-  local planning_phases=""
+  # GSD planning
+  local planning_phases="[]"
   local planning_todos=""
   local planning_state=""
-  local planning_roadmap=""
+  local last_completed_phase=""
+  local next_phase=""
+  local planning_last_completed_plan=""
+  local planning_next_plan=""
   if [ -d ".planning" ]; then
-    # Count phases (directories in phases/)
+    # Phases
     if [ -d ".planning/phases" ]; then
-      planning_phases=$(find ".planning/phases" -mindepth 1 -maxdepth 1 -type d | wc -l)
+      planning_phases=$(find ".planning/phases" -mindepth 1 -maxdepth 1 -type d -printf '%P\n' | sort -n | while read -r phase_dir; do
+        local num=$(echo "$phase_dir" | sed 's/-.*//')
+        local name_phase=$(echo "$phase_dir" | sed 's/^[0-9][0-9]-//')
+        local completed="false"
+        if [ -f ".planning/phases/$phase_dir/${num}-01-SUMMARY.md" ]; then
+          completed="true"
+        fi
+        local description=""
+        if [ -f ".planning/phases/$phase_dir/${num}-01-PLAN.md" ]; then
+          description=$(head -1 ".planning/phases/$phase_dir/${num}-01-PLAN.md" | sed 's/^# //' | sed 's/^#//')
+        fi
+        echo "{\"number\":\"$num\",\"name\":\"$name_phase\",\"completed\":$completed,\"description\":\"$description\"}"
+      done | jq -s .)
     fi
 
-    # Count todos (files in todos/pending/)
+    # Derive last completed and next phase
+    last_completed_phase=$(echo "$planning_phases" | jq -r 'map(select(.completed == true)) | last | .name // ""')
+    next_phase=$(echo "$planning_phases" | jq -r 'map(select(.completed == false)) | first | .name // ""')
+
+    # Todos
     if [ -d ".planning/todos/pending" ]; then
       planning_todos=$(find ".planning/todos/pending" -name "*.md" | wc -l)
     fi
 
-    # Read state if it exists
+    # State
     if [ -f ".planning/STATE.md" ]; then
       planning_state=$(head -n 5 ".planning/STATE.md" | tr '\n' ' ' | sed 's/  */ /g')
     fi
 
-    # Read roadmap summary if it exists
+    # Roadmap sections
     if [ -f ".planning/ROADMAP.md" ]; then
-      planning_roadmap=$(head -n 10 ".planning/ROADMAP.md" | tr '\n' ' ' | sed 's/  */ /g')
+      planning_last_completed_plan=$(sed -n '/^## Last Completed Plan/,/^## /{p}' ".planning/ROADMAP.md" | sed '1d;$d' | head -20 | tr '\n' ' ' | sed 's/  */ /g')
+      planning_next_plan=$(sed -n '/^## Next Plan/,/^## /{p}' ".planning/ROADMAP.md" | sed '1d;$d' | head -20 | tr '\n' ' ' | sed 's/  */ /g')
     fi
   fi
   jq -n \
@@ -54,11 +74,14 @@ collect_repo() {
     --arg branch "$branch" \
     --argjson commits "$commits" \
     --argjson issues "$issues" \
-    --arg planning_phases "$planning_phases" \
+    --argjson planning_phases "$planning_phases" \
     --arg planning_todos "$planning_todos" \
     --arg planning_state "$planning_state" \
-    --arg planning_roadmap "$planning_roadmap" \
-    '{name:$name, dir:$dir, branch:$branch, commits:$commits, issues:$issues, planning_phases:$planning_phases, planning_todos:$planning_todos, planning_state:$planning_state, planning_roadmap:$planning_roadmap}'
+    --arg last_completed_phase "$last_completed_phase" \
+    --arg next_phase "$next_phase" \
+    --arg planning_last_completed_plan "$planning_last_completed_plan" \
+    --arg planning_next_plan "$planning_next_plan" \
+    '{name:$name, dir:$dir, branch:$branch, commits:$commits, issues:$issues, planning_phases:$planning_phases, planning_todos:$planning_todos, planning_state:$planning_state, last_completed_phase:$last_completed_phase, next_phase:$next_phase, planning_last_completed_plan:$planning_last_completed_plan, planning_next_plan:$planning_next_plan}'
 }
 
 # Ensure output directory exists
