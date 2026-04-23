@@ -25,8 +25,11 @@ collect_repo() {
   # Current branch
   local branch=$(git branch --show-current)
 
-  # Beads issues
-  local issues=$(bd list --json)
+  # Beads issues (fail silently if unavailable)
+  local issues="[]"
+  if command -v bd >/dev/null 2>&1; then
+    issues=$(bd list --json 2>/dev/null || echo "[]")
+  fi
 
   # GSD planning
   local planning_phases="[]"
