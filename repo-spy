@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+REPOS=(
+  "$HOME/Projects/netbones"
+  "$HOME/Projects/flearadar"
+  "$HOME/Projects/soralia-village"
+  "$HOME/Projects/startup-connect"
+)
+OUTPUT="$HOME/.repo-spy/data.json"
+
+collect_repo() {
+  local dir=$1
+  local name=$(basename "$dir")
+
+  cd "$dir" || return
+
+  # Git: today's commits
+  local commits=$(git log --since="midnight" --format='{"hash":"%h","msg":"%s","time":"%cr","author":"%an"}' | jq -s .)
+
+  # Current branch
+  local branch=$(git branch --show-current)
+
+  # Beads issues
+  local issues=$(bd list --json)
+
+  # GSD planning phases
+  local planning_phases=""
+  local planning_todos=""
+  local planning_state=""
+  local planning_roadmap=""
+  if [ -d ".planning" ]; then
+    # Count phases (directories in phases/)
+    if [ -d ".planning/phases" ]; then
+      planning_phases=$(find ".planning/phases" -mindepth 1 -maxdepth 1 -type d | wc -l)
+    fi
+
+    # Count todos (files in todos/pending/)
+    if [ -d ".planning/todos/pending" ]; then
+      planning_todos=$(find ".planning/todos/pending" -name "*.md" | wc -l)
+    fi
+
+    # Read state if it exists
+    if [ -f ".planning/STATE.md" ]; then
+      planning_state=$(head -n 5 ".planning/STATE.md" | tr '\n' ' ' | sed 's/  */ /g')
+    fi
+
+    # Read roadmap summary if it exists
+    if [ -f ".planning/ROADMAP.md" ]; then
+      planning_roadmap=$(head -n 10 ".planning/ROADMAP.md" | tr '\n' ' ' | sed 's/  */ /g')
+    fi
+  fi
+  jq -n \
+    --arg name "$name" \
+    --arg dir "$dir" \
+    --arg branch "$branch" \
+    --argjson commits "$commits" \
+    --argjson issues "$issues" \
+    --arg planning_phases "$planning_phases" \
+    --arg planning_todos "$planning_todos" \
+    --arg planning_state "$planning_state" \
+    --arg planning_roadmap "$planning_roadmap" \
+    '{name:$name, dir:$dir, branch:$branch, commits:$commits, issues:$issues, planning_phases:$planning_phases, planning_todos:$planning_todos, planning_state:$planning_state, planning_roadmap:$planning_roadmap}'
+}
+
+# Ensure output directory exists
+if [ ! -d "$HOME/.repo-spy" ]; then
+  mkdir -p "$HOME/.repo-spy"
+fi
+
+# Collect all repos, merge into one JSON array
+data=$(for r in "${REPOS[@]}"; do collect_repo "$r"; done | jq -s .)
+echo "{\"repos\":$data,\"synced\":\"$(date -Iseconds)\"}" >"$OUTPUT"
