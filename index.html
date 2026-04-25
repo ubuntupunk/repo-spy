@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>repo-spy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0b0d0f;
+  --surface:    #111416;
+  --card:       #161a1d;
+  --card2:      #1c2024;
+  --border:     #232930;
+  --border2:    #2c343c;
+  --text:       #dde3e9;
+  --sub:        #8a97a4;
+  --muted:      #4e5a64;
+  --dim:        #2e3840;
+
+  --green:      #3ecf8e;
+  --green-dim:  rgba(62,207,142,0.1);
+  --green-line: rgba(62,207,142,0.2);
+
+  --amber:      #f0a500;
+  --amber-dim:  rgba(240,165,0,0.1);
+
+  --red:        #e05c5c;
+  --red-dim:    rgba(224,92,92,0.1);
+  --red-line:   rgba(224,92,92,0.25);
+
+  --blue:       #5a9cf5;
+  --blue-dim:   rgba(90,156,245,0.1);
+
+  --purple:     #9d88f5;
+  --purple-dim: rgba(157,136,245,0.1);
+
+  --mono: 'IBM Plex Mono', 'Fira Code', monospace;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 22px 18px 40px;
+}
+
+/* Header */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.hdr-left { display: flex; align-items: baseline; gap: 14px; }
+.logo { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--green); }
+.logo em { color: var(--muted); font-style: normal; }
+.synced { font-size: 10px; color: var(--muted); }
+.btn-refresh {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--sub);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.12s;
+}
+.btn-refresh:hover { border-color: var(--green); color: var(--green); }
+
+/* Stats */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+.stat-n { font-size: 24px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+.stat-n.c-green { color: var(--green); }
+.stat-n.c-amber { color: var(--amber); }
+.stat-n.c-red   { color: var(--red); }
+.stat-n.c-blue  { color: var(--blue); }
+.stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+
+/* Repo grid */
+.repos { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+
+/* Card */
+.repo-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.repo-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 13px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.repo-hd-l { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.repo-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.repo-dir { font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 1px; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pill-branch { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-line); }
+
+/* Section */
+.sec { border-bottom: 1px solid var(--border); }
+.sec:last-child { border-bottom: none; }
+
+.sec-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 13px;
+  cursor: pointer;
+  user-select: none;
+  gap: 6px;
+}
+.sec-hd:hover .sec-title { color: var(--sub); }
+.sec-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 700;
+  color: var(--muted);
+  transition: 0.12s;
+}
+.sec-right { display: flex; align-items: center; gap: 6px; }
+.sec-count {
+  font-size: 9px;
+  color: var(--muted);
+  background: var(--dim);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.sec-count.warn { color: var(--red); background: var(--red-dim); }
+.sec-caret { font-size: 8px; color: var(--muted); transition: transform 0.15s; display: inline-block; line-height: 1; }
+.sec-hd.open .sec-caret { transform: rotate(90deg); }
+
+.sec-body { padding: 6px 13px 10px; }
+.sec-body.collapsed { display: none; }
+
+/* Git tree */
+.commit-row { display: flex; align-items: flex-start; }
+.tree-col { display: flex; flex-direction: column; align-items: center; width: 18px; flex-shrink: 0; padding-top: 6px; }
+.c-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; z-index: 1; }
+.c-dot.feat    { background: var(--green);  box-shadow: 0 0 5px rgba(62,207,142,0.35); }
+.c-dot.fix     { background: var(--red); }
+.c-dot.style   { background: var(--purple); }
+.c-dot.refactor{ background: var(--amber); }
+.c-dot.chore   { background: var(--muted); }
+.c-dot.other   { background: var(--blue); }
+.c-line { width: 1px; flex: 1; min-height: 10px; background: var(--border2); margin-top: 2px; }
+.c-info { flex: 1; min-width: 0; padding: 2px 0 6px 5px; }
+.c-msg { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; display: flex; align-items: center; gap: 5px; }
+.c-tag { font-size: 8px; padding: 0px 5px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
+.c-tag.feat    { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green-line); }
+.c-tag.fix     { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red-line); }
+.c-tag.style   { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(157,136,245,0.2); }
+.c-tag.refactor{ background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(240,165,0,0.2); }
+.c-tag.chore   { background: var(--dim);        color: var(--muted);  border: 1px solid var(--border2); }
+.c-tag.docs    { background: var(--dim);        color: var(--muted);  border: 1px solid var(--border2); }
+.c-tag.test    { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(90,156,245,0.2); }
+.c-tag.other   { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(90,156,245,0.2); }
+.c-msg-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-meta { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.c-hash { font-size: 9px; color: var(--dim); background: var(--surface); padding: 1px 5px; border-radius: 3px; flex-shrink: 0; align-self: flex-start; margin-top: 4px; margin-left: 4px; }
+
+/* Issues */
+.p-group { margin-bottom: 8px; }
+.p-group:last-child { margin-bottom: 0; }
+.p-hdr { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); padding: 2px 0 4px; border-bottom: 1px solid var(--border); margin-bottom: 3px; }
+.issue-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.issue-row:last-child { border-bottom: none; }
+.issue-id { font-size: 9px; color: var(--muted); flex-shrink: 0; width: 82px; overflow: hidden; white-space: nowrap; }
+.issue-title { flex: 1; font-size: 11px; font-family: var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.issue-badges { display: flex; gap: 3px; flex-shrink: 0; }
+.bdg { font-size: 8px; padding: 1px 5px; border-radius: 8px; font-weight: 700; white-space: nowrap; font-family: var(--mono); }
+.bdg-p0      { background: rgba(224,92,92,0.15);  color: var(--red);    border: 1px solid rgba(224,92,92,0.3); }
+.bdg-p1      { background: var(--amber-dim);       color: var(--amber);  border: 1px solid rgba(240,165,0,0.25); }
+.bdg-p2      { background: var(--blue-dim);        color: var(--blue);   border: 1px solid rgba(90,156,245,0.2); }
+.bdg-p3      { background: var(--dim);             color: var(--muted);  border: 1px solid var(--border2); }
+.bdg-bug     { background: var(--red-dim);         color: var(--red);    border: 1px solid rgba(224,92,92,0.2); }
+.bdg-epic    { background: var(--purple-dim);      color: var(--purple); border: 1px solid rgba(157,136,245,0.2); }
+.bdg-task    { background: var(--dim);             color: var(--muted);  border: 1px solid var(--border); }
+.bdg-blocked { background: rgba(224,92,92,0.12);  color: var(--red);    border: 1px solid rgba(224,92,92,0.25); }
+.bdg-gsd     { background: var(--green-dim);       color: var(--green);  border: 1px solid var(--green-line); }
+
+/* Phases */
+.phase-row { display: flex; align-items: center; gap: 7px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.phase-row:last-child { border-bottom: none; }
+.phase-num { font-size: 9px; color: var(--muted); width: 22px; flex-shrink: 0; text-align: right; }
+.phase-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.phase-dot.done    { background: var(--green); }
+.phase-dot.active  { background: var(--amber); box-shadow: 0 0 6px rgba(240,165,0,0.4); }
+.phase-dot.pending { background: var(--dim); border: 1px solid var(--border2); }
+.phase-name { flex: 1; font-size: 11px; font-family: var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.phase-name.done    { color: var(--muted); text-decoration: line-through; }
+.phase-name.active  { color: var(--text); font-weight: 500; }
+.phase-name.pending { color: var(--sub); }
+.phase-desc { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-family: var(--sans); }
+.phase-status { font-size: 8px; padding: 1px 6px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
+.phase-status.done    { background: var(--green-dim);  color: var(--green); }
+.phase-status.active  { background: var(--amber-dim);  color: var(--amber); }
+.phase-status.pending { background: var(--dim);         color: var(--muted); }
+
+/* Roadmap */
+.roadmap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rmap-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 3px; }
+.rmap-val { font-size: 10px; color: var(--sub); font-family: var(--sans); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.state-val { font-size: 10px; color: var(--sub); font-family: var(--sans); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* Nil / loading */
+.nil { font-size: 11px; color: var(--muted); font-style: italic; }
+.loading { display: flex; align-items: center; justify-content: center; height: 220px; color: var(--muted); font-size: 12px; gap: 8px; }
+.spinner { width: 13px; height: 13px; border: 2px solid var(--border2); border-top-color: var(--green); border-radius: 50%; animation: spin 0.65s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.err-box { background: var(--red-dim); border: 1px solid var(--red-line); border-radius: 6px; padding: 14px 16px; color: var(--red); font-size: 12px; margin-top: 16px; line-height: 1.7; }
+.err-box code { opacity: 0.8; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">repo<em>-</em>spy</div>
+      <div class="synced" id="js-synced">loading…</div>
+    </div>
+    <button class="btn-refresh" onclick="window.location.reload()">↻ refresh</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n c-green" id="js-commits">—</div><div class="stat-lbl">commits today</div></div>
+    <div class="stat"><div class="stat-n c-amber" id="js-issues">—</div><div class="stat-lbl">open issues</div></div>
+    <div class="stat"><div class="stat-n c-red"   id="js-blocked">—</div><div class="stat-lbl">blocked</div></div>
+    <div class="stat"><div class="stat-n c-blue"  id="js-pending">—</div><div class="stat-lbl">phases pending</div></div>
+  </div>
+
+  <div id="js-repos">
+    <div class="loading"><div class="spinner"></div>reading data.json…</div>
+  </div>
+
+</div>
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const esc = s => s == null ? '' : String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toggleSec(hd) {
+  const body = hd.nextElementSibling;
+  if (hd.classList.contains('open')) {
+    body.classList.add('collapsed'); hd.classList.remove('open');
+  } else {
+    body.classList.remove('collapsed'); hd.classList.add('open');
+  }
+}
+
+// ── Commit type classifier ────────────────────────────────────────────────────
+const COMMIT_TYPES = ['feat','fix','refactor','style','chore','docs','test','perf','build','ci','revert'];
+function classifyMsg(msg) {
+  const s = (msg||'').toLowerCase().trim();
+  for (const t of COMMIT_TYPES) {
+    if (s.startsWith(t+':') || s.startsWith(t+'(')) return t;
+  }
+  if (s.startsWith('merge')) return 'chore';
+  return 'other';
+}
+function stripType(msg, type) {
+  if (type === 'other') return msg;
+  return (msg||'').replace(new RegExp(`^${type}(\\([^)]*\\))?:\\s*`,'i'),'');
+}
+const DOT_CLS = {feat:'feat',fix:'fix',style:'style',refactor:'refactor',chore:'chore',docs:'chore',test:'feat',perf:'refactor',other:'other'};
+
+// ── Render git commits ────────────────────────────────────────────────────────
+function renderCommits(commits) {
+  if (!commits || !commits.length) return '<div class="nil">no commits today</div>';
+  return commits.map((c, i) => {
+    const type   = classifyMsg(c.msg);
+    const dotCls = DOT_CLS[type] || 'other';
+    const tagCls = COMMIT_TYPES.includes(type) ? type : 'other';
+    const tag    = type !== 'other' ? `<span class="c-tag ${tagCls}">${esc(type)}</span>` : '';
+    const clean  = esc(stripType(c.msg, type));
+    const isLast = i === commits.length - 1;
+    return `<div class="commit-row">
+      <div class="tree-col">
+        <div class="c-dot ${dotCls}"></div>
+        ${!isLast ? '<div class="c-line"></div>' : ''}
+      </div>
+      <div class="c-info">
+        <div class="c-msg">${tag}<span class="c-msg-text">${clean}</span></div>
+        <div class="c-meta">${esc(c.time)} · ${esc(c.author)}</div>
+      </div>
+      <div class="c-hash">${esc(c.hash)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Normalise beads issues — matched to real bd list --json schema ────────────
+function normaliseIssues(raw) {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map(item => {
+    // priority is a number 0-3, convert to "P0" etc.
+    const pNum = item.priority ?? item.p ?? null;
+    const priority = pNum !== null ? 'P' + pNum : 'P?';
+
+    // dependencies array — items that this issue depends on = blocked_by
+    const deps = Array.isArray(item.dependencies) ? item.dependencies : [];
+    const blocked_by = deps
+      .filter(d => d.type === 'parent-child' || d.type === 'blocks')
+      .map(d => d.depends_on_id)
+      .filter(id => id && id !== item.id);
+
+    return {
+      id:         item.id    || '?',
+      priority,
+      type:       item.issue_type || item.type || item.kind || 'task',
+      title:      item.title || item.name || '',
+      description:item.description || '',
+      status:     item.status || 'open',
+      blocked_by,
+      gsd:        !!(item.gsd || (Array.isArray(item.tags) && item.tags.includes('gsd'))),
+    };
+  });
+}
+
+function countBlocked(raw) {
+  return normaliseIssues(raw).filter(i => i.blocked_by.length > 0).length;
+}
+
+// ── Render beads issues ───────────────────────────────────────────────────────
+function renderIssues(raw) {
+  const issues = normaliseIssues(raw);
+  if (!issues.length) return '<div class="nil">no issues found — is bd available?</div>';
+
+  const groups = {};
+  for (const iss of issues) {
+    const p = (iss.priority||'P?').toUpperCase();
+    (groups[p] = groups[p]||[]).push(iss);
+  }
+  const pCls  = {P0:'bdg-p0',P1:'bdg-p1',P2:'bdg-p2',P3:'bdg-p3'};
+  const tyCls = {bug:'bdg-bug',epic:'bdg-epic',task:'bdg-task'};
+
+  return Object.keys(groups).sort().map(p => {
+    const rows = groups[p].map(iss => {
+      const isBlocked = iss.blocked_by.length > 0;
+      return `<div class="issue-row" title="${esc(isBlocked ? 'blocked by: '+iss.blocked_by.join(', ') : iss.title)}">
+        <span class="issue-id">${esc(iss.id)}</span>
+        <span class="issue-title">${esc(iss.title)}</span>
+        <div class="issue-badges">
+          <span class="bdg ${pCls[p]||'bdg-p3'}">${esc(p)}</span>
+          <span class="bdg ${tyCls[iss.type]||'bdg-task'}">${esc(iss.type)}</span>
+          ${isBlocked     ? '<span class="bdg bdg-blocked">blocked</span>' : ''}
+          ${iss.gsd       ? '<span class="bdg bdg-gsd">gsd</span>'        : ''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="p-group">
+      <div class="p-hdr">${esc(p)} · ${groups[p].length} item${groups[p].length!==1?'s':''}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// ── Render GSD phases ─────────────────────────────────────────────────────────
+function renderPhases(phases) {
+  if (!phases || !phases.length) return '<div class="nil">no .planning/phases found</div>';
+
+  // Mark first non-done as active
+  let foundActive = false;
+  return phases.map(ph => {
+    const done = ph.completed === true || ph.completed === 'true';
+    let state;
+    if (done) {
+      state = 'done';
+    } else if (!foundActive) {
+      state = 'active';
+      foundActive = true;
+    } else {
+      state = 'pending';
+    }
+    const num = String(ph.number||'').padStart(2,'0');
+    const name = (ph.name||'').replace(/-/g,' ');
+    return `<div class="phase-row">
+      <span class="phase-num">${esc(num)}</span>
+      <div class="phase-dot ${state}"></div>
+      <span class="phase-name ${state}" title="${esc(ph.description||name)}">${esc(name)}</span>
+      ${ph.description ? `<span class="phase-desc">${esc(ph.description)}</span>` : ''}
+      <span class="phase-status ${state}">${state==='active'?'active':(done?'done':'pending')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Render roadmap / state section ────────────────────────────────────────────
+function renderRoadmapSection(repo) {
+  const hasLast  = !!(repo.planning_last_completed_plan||'').trim();
+  const hasNext  = !!(repo.planning_next_plan||'').trim();
+  const hasState = !!(repo.planning_state||'').trim();
+  const hasTodos = !!(repo.planning_todos||'').trim() && repo.planning_todos !== '0';
+
+  if (!hasLast && !hasNext && !hasState) return '';
+
+  let body = '';
+  if (hasLast || hasNext) {
+    body += `<div class="roadmap-grid">
+      <div>
+        <div class="rmap-label">last completed</div>
+        <div class="rmap-val">${esc(repo.planning_last_completed_plan||'—')}</div>
+      </div>
+      <div>
+        <div class="rmap-label">next up</div>
+        <div class="rmap-val">${esc(repo.planning_next_plan||'—')}</div>
+      </div>
+    </div>`;
+  }
+  if (hasState) {
+    body += `<div class="state-val">${esc(repo.planning_state)}</div>`;
+  }
+
+  return `<div class="sec">
+    <div class="sec-hd open" onclick="toggleSec(this)">
+      <span class="sec-title">roadmap &amp; state</span>
+      <div class="sec-right">
+        ${hasTodos ? `<span class="sec-count">${esc(repo.planning_todos)} todos</span>` : ''}
+        <span class="sec-caret">▶</span>
+      </div>
+    </div>
+    <div class="sec-body">${body}</div>
+  </div>`;
+}
+
+// ── Render one repo card ──────────────────────────────────────────────────────
+function renderRepo(repo) {
+  const issues      = normaliseIssues(repo.issues);
+  const blocked     = countBlocked(repo.issues);
+  const pending     = (repo.planning_phases||[]).filter(p=>!(p.completed===true||p.completed==='true')).length;
+  const todayCount  = (repo.commits||[]).length;
+
+  return `<div class="repo-card">
+    <div class="repo-hd">
+      <div class="repo-hd-l">
+        <div>
+          <div class="repo-name">${esc(repo.name)}</div>
+          <div class="repo-dir">${esc(repo.dir)}</div>
+        </div>
+        <span class="pill pill-branch">${esc(repo.branch)}</span>
+      </div>
+    </div>
+
+    ${renderRoadmapSection(repo)}
+
+    <div class="sec">
+      <div class="sec-hd open" onclick="toggleSec(this)">
+        <span class="sec-title">today's commits</span>
+        <div class="sec-right">
+          <span class="sec-count">${todayCount}</span>
+          <span class="sec-caret">▶</span>
+        </div>
+      </div>
+      <div class="sec-body">${renderCommits(repo.commits)}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hd open" onclick="toggleSec(this)">
+        <span class="sec-title">beads issues</span>
+        <div class="sec-right">
+          <span class="sec-count">${issues.length}</span>
+          ${blocked > 0 ? `<span class="sec-count warn">${blocked} blocked</span>` : ''}
+          <span class="sec-caret">▶</span>
+        </div>
+      </div>
+      <div class="sec-body">${renderIssues(repo.issues)}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hd open" onclick="toggleSec(this)">
+        <span class="sec-title">gsd phases</span>
+        <div class="sec-right">
+          <span class="sec-count">${pending} pending</span>
+          <span class="sec-caret">▶</span>
+        </div>
+      </div>
+      <div class="sec-body">${renderPhases(repo.planning_phases)}</div>
+    </div>
+  </div>`;
+}
+
+// ── Render full dashboard ─────────────────────────────────────────────────────
+function render(data) {
+  const repos = data.repos || [];
+
+  const totalCommits = repos.reduce((s,r) => s+(r.commits||[]).length, 0);
+  const totalIssues  = repos.reduce((s,r) => s+normaliseIssues(r.issues).length, 0);
+  const totalBlocked = repos.reduce((s,r) => s+countBlocked(r.issues), 0);
+  const totalPending = repos.reduce((s,r) => s+(r.planning_phases||[]).filter(p=>!(p.completed===true||p.completed==='true')).length, 0);
+
+  document.getElementById('js-commits').textContent = totalCommits;
+  document.getElementById('js-issues').textContent  = totalIssues;
+  document.getElementById('js-blocked').textContent = totalBlocked;
+  document.getElementById('js-pending').textContent = totalPending;
+
+  try {
+    const d = new Date(data.synced);
+    document.getElementById('js-synced').textContent =
+      'synced ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch(e) {}
+
+  document.getElementById('js-repos').innerHTML =
+    `<div class="repos">${repos.map(renderRepo).join('')}</div>`;
+}
+
+// ── Load data.json ────────────────────────────────────────────────────────────
+async function load() {
+  try {
+    const res = await fetch('data.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+    render(await res.json());
+  } catch(e) {
+    document.getElementById('js-repos').innerHTML = `
+      <div class="err-box">
+        <strong>could not load data.json</strong><br><br>
+        First run the collector:<br>
+        <code>&nbsp;&nbsp;repo-spy</code><br><br>
+        Then serve the dashboard:<br>
+        <code>&nbsp;&nbsp;repo-spy-dashboard</code><br><br>
+        Open: <code>http://localhost:7777</code><br><br>
+        Error: ${esc(e.message)}
+      </div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

@@ -5,13 +5,17 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation.
 
-REPOS=(
-  "$HOME/Projects/netbones"
-  "$HOME/Projects/flearadar"
-  "$HOME/Projects/soralia-village"
-  "$HOME/Projects/startup-connect"
-)
+CONFIG="$HOME/.repo-spy/config"
 OUTPUT="$HOME/.repo-spy/data.json"
+
+if [ -f "$CONFIG" ]; then
+    mapfile -t REPOS < <(grep -v '^\s*$\|^\s*#' "$CONFIG" | while IFS= read -r line; do eval echo "$line"; done)
+else
+    echo "repo-spy: no config found at $CONFIG" >&2
+    echo "Create it with one repo path per line, e.g.:" >&2
+    echo "  echo \"\$HOME/Projects/my-repo\" > $CONFIG" >&2
+    exit 1
+fi
 
 collect_repo() {
   local dir=$1

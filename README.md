@@ -2,6 +2,8 @@
 
 A bash script that collects overview data from multiple repositories, providing insights into daily commits, issues, and GSD planning progress.
 
+![dashboard screenshot](screenshot.png)
+
 ## Features
 
 - **Daily Commits**: Collects all git commits from the current day across repositories
@@ -13,32 +15,52 @@ A bash script that collects overview data from multiple repositories, providing 
   - Phase descriptions and todo counts
   - Roadmap sections for last completed and next plans
 
+## Install
+
+```bash
+git clone <repo-url> && cd repo-spy
+./install.sh
+```
+
+This installs two commands to `~/.local/bin`:
+
+| Command | What it does |
+|---|---|
+| `repo-spy` | Collect data from configured repos → `~/.repo-spy/data.json` |
+| `repo-spy-dashboard` | Collect + serve the dashboard on `http://localhost:7777` |
+
 ## Usage
 
-1. Make the script executable:
+**Quick start:**
 
-   ```bash
-   chmod +x repo-spy
-   ```
+```bash
+repo-spy-dashboard
+```
 
-2. Run the script:
+This collects fresh data and serves the dashboard. Opens your browser automatically.
 
-   ```bash
-   ./repo-spy
-   ```
+**Collect only:**
 
-3. View the output in `~/.repo-spy/data.json`
+```bash
+repo-spy
+```
 
 ## Configuration
 
-Edit the `REPOS` array in the script to specify which repositories to monitor:
+Edit `~/.repo-spy/config` — one repo path per line, `#` comments supported:
+
+```
+$HOME/Projects/my-repo
+$HOME/Projects/another-repo
+# $HOME/Projects/archived-repo
+```
+
+Environment variables like `$HOME` are expanded automatically.
+
+**Custom port:**
 
 ```bash
-REPOS=(
-  "$HOME/Projects/repo1"
-  "$HOME/Projects/repo2"
-  # Add more repos here
-)
+REPO_SPY_PORT=8888 repo-spy-dashboard
 ```
 
 ## Output Format

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2024 @ubuntupunk. All rights reserved.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation.
+
+PORT="${REPO_SPY_PORT:-7777}"
+DIR="$HOME/.repo-spy"
+
+if [ ! -f "$DIR/data.json" ]; then
+    echo "repo-spy: running collector first..."
+    repo-spy || exit 1
+fi
+
+echo "repo-spy dashboard: http://localhost:$PORT"
+echo "  press Ctrl+C to stop"
+
+if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "http://localhost:$PORT" 2>/dev/null &
+elif command -v open >/dev/null 2>&1; then
+    open "http://localhost:$PORT" 2>/dev/null &
+fi
+
+cd "$DIR" && python3 -m http.server "$PORT"
